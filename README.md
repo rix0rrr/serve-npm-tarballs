@@ -40,7 +40,7 @@ The tool can be used in two ways:
 Convenient if you just need to run a single script against a mock repo:
 
 ```
-serve-npm-tarballs [options] ./some-script-that-uses-npm.sh
+serve-npm-tarballs [options] -- ./some-script-that-uses-npm.sh
 ```
 
 The subcommand will be run with a modified environment so that all invocations
@@ -77,8 +77,12 @@ serve-npm-tarballs -d DIRECTORY [...]
 ```
 
 Will serve all files called `*.tgz` as NPM packages from the given directory
-from the repository (default: current directory). Additional packages can be
-published later on by running `npm publish`.
+from the repository (default: current directory).
+
+Additional packages can be published later on by running `npm publish`, but
+ONLY if their upstream versions are 'hidden' (see below). Otherwise,
+Verdaccio will first retrieve the upstream version and then refuse to
+publish the new version. `--force` won't help, [see here](https://github.com/verdaccio/verdaccio/issues/1435).
 
 ## Hiding
 

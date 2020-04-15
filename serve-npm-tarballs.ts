@@ -6,6 +6,8 @@ import * as path from 'path';
 import * as tar from 'tar';
 import { promises as fs } from 'fs';
 
+const VERSION = require('./package.json').version;
+
 // No types :(
 const { default: startVerdaccio } = require('verdaccio');
 
@@ -139,59 +141,25 @@ async function main() {
     try {
       debug(`Working directory: ${tempDir}`);
 
-      const tarballs = (await fs.readdir(argv.directory, { encoding: 'utf-8' }))
+      const tarballs = (await fs.readdir(path.resolve(argv.directory), { encoding: 'utf-8' }))
         .filter(f => f.endsWith('.tgz'))
         .map(f => path.resolve(argv.directory, f));
+
+      const tarballInfos = new Array<TarballInfo>();
+      for (const tarball of tarballs) {
+        try {
+          const pj = JSON.parse((await extractFileFromTarball(tarball, 'package/package.json')).toString());
+          tarballInfos.push({ tarballFile: tarball, packageJson: pj });
+        } catch (e) {
+          debug(`Error reading ${tarball}'s package.json: ${e.message}`);
+        }
+      }
 
       const packagesToHide: string[] = [...argv["hide-upstream"]];
       if (argv["hide-tarballs"]) {
         // We have to read the package name from every individual tarball
-        for (const tarball of tarballs) {
-          try {
-            const pj = JSON.parse((await extractFileFromTarball(tarball, 'package/package.json')).toString());
-            packagesToHide.push(pj.name as any);
-          } catch (e) {
-            debug(`Error reading ${tarball}'s package.json: ${e.message}`);
-          }
-          tar.x({ file: tarball }, ['package/package.json']);
-        }
+        packagesToHide.push(...tarballInfos.map(t => t.packageJson.name));
       }
-
-      const packageHidingConfig: any = {};
-      debug(`Hiding ${packagesToHide}`);
-      for (const mask of packagesToHide) {
-        packageHidingConfig[mask] = {
-          access: '$all',
-          publish: '$all',
-          // Specifically: no 'proxy' directive!
-        };
-      }
-
-      const configJson = {
-        storage: tempDir,
-        uplinks: {
-          npmjs: {
-            url: 'https://registry.npmjs.org',
-            cache: false
-          }
-        },
-        max_body_size: '100mb',
-        publish: {
-          allow_offline: true
-        },
-        logs: [
-          ...argv.log ? [{ type: 'file', path: argv.log, format: 'pretty', level: argv["log-level"] }] : [],
-          ...argv.verbose ? [{ type: 'stderr', format: 'pretty', level: argv["log-level"] }] : [],
-        ],
-        packages: {
-          ...packageHidingConfig,
-          '**': {
-            access: '$all',
-            publish: '$all',
-            proxy: 'npmjs',
-          }
-        },
-      };
 
       // Write a config file for NPM
       // The auth token MUST be passed via .npmrc: https://github.com/npm/npm/issues/15565
@@ -210,7 +178,8 @@ async function main() {
         npm_config_registry: `http://localhost:${port}/`,
 
         // The PID which a script can use to kill us
-        SERVE_NPM_TARBALLS_PID: `${process.pid}`
+        SERVE_NPM_TARBALLS_PID: `${process.pid}`,
+        SERVE_NPM_TARBALLS_WORKDIR: tempDir,
       };
 
       const subprocessEnv = {
@@ -218,30 +187,99 @@ async function main() {
         ...npmConfigVars,
       };
 
-      await new Promise(ok => startVerdaccio(configJson, port, tempDir, '0.1.0', 'serve-npm-tarballs+verdaccio', (webServer: any, addr: any, _pkgName: any, _pkgVersion: any) => {
-        debug(`Listening on ${addr.host}:${addr.port}`);
-        webServer.listen(addr.port || addr.path, addr.host, async () => {
-          try {
-            // Publish all tarballs
-            await Promise.all(tarballs.map(async (tarball) => invokeSubprocess(['npm', '--loglevel', 'silent', 'publish', tarball], {
-              verbose: argv.verbose > 0,
-              env: subprocessEnv,
-            })));
+      // Run verdaccio twice -- once with an config without upstream, so that we can unconditionally
+      // publish all packages into it (regardless of whether the same version already exists upstream).
+      //
+      // The second time with the *real* config
+      const packagesWithoutUpstream = {
+        '**': {
+          access: '$all',
+          publish: '$all',
+        }
+      };
 
-            await action(npmConfigVars);
-          } catch (e) {
-            console.error(e.message);
-            process.exitCode = 1;
-          }
-
-          webServer.close();
-          ok();
+      if (tarballInfos.length > 0) {
+        debug(`Publishing ${tarballInfos.length} packages`);
+        await runVerdaccio(makeVerdaccioConfig(tempDir, packagesWithoutUpstream), port, tempDir, async () => {
+          // Publish all tarballs
+          // This will MONGO eat up your CPU
+          await Promise.all(tarballInfos.map(tarball => invokeSubprocess(['npm', '--loglevel', 'silent', 'publish', '--force', tarball.tarballFile], {
+            verbose: argv.verbose > 0,
+            env: subprocessEnv,
+          })));
         });
-      }));
+      }
+
+      //        99.83 real        87.17 user        25.64 sys
+
+
+      debug(`Hiding ${packagesToHide}`);
+      const finalPackageConfig: any = {};
+      for (const mask of packagesToHide) {
+        finalPackageConfig[mask] = {
+          access: '$all',
+          publish: '$all',
+          // Specifically: no 'proxy' directive!
+        };
+      }
+      finalPackageConfig['**'] = {
+        access: '$all',
+        publish: '$all',
+        proxy: 'npmjs',
+      };
+
+      // Second run -- do the real work (whatever it is)
+      await runVerdaccio(makeVerdaccioConfig(tempDir, finalPackageConfig), port, tempDir, async() => {
+        await action(npmConfigVars);
+      });
+    } catch(e) {
+      console.error(e.message);
+      process.exitCode = 1;
     } finally {
       await fs.rmdir(tempDir, { recursive: true });
     }
   }
+
+  function makeVerdaccioConfig(tempDir: string, packages: any) {
+    return {
+      storage: tempDir,
+      uplinks: {
+        npmjs: {
+          url: 'https://registry.npmjs.org',
+          cache: false
+        }
+      },
+      max_body_size: '100mb',
+      publish: {
+        allow_offline: true
+      },
+      logs: [
+        ...argv.log ? [{ type: 'file', path: argv.log, format: 'pretty', level: argv["log-level"] }] : [],
+        ...argv.verbose ? [{ type: 'stderr', format: 'pretty', level: argv["log-level"] }] : [],
+      ],
+      packages,
+    };
+  }
+
+  /**
+   * Run verdaccio once
+   */
+  async function runVerdaccio(config: any, port: number, tempDir: string, block: () => Promise<void>) {
+    await new Promise((ok, ko) => startVerdaccio(config, port, tempDir, VERSION, 'serve-npm-tarballs+verdaccio', (webServer: any, addr: any, _pkgName: any, _pkgVersion: any) => {
+      debug(`Listening on ${addr.host}:${addr.port}`);
+      webServer.listen(addr.port || addr.path, addr.host, async () => {
+        try {
+          await block();
+        } catch (e) {
+          ko(e);
+        }
+
+        webServer.close();
+        ok();
+      });
+    }));
+  }
+
 }
 
 let debug = (message: string) => {
@@ -286,6 +324,11 @@ async function extractFileFromTarball(tarball: string, filePath: string): Promis
   });
 
   return Buffer.concat(data);
+}
+
+interface TarballInfo {
+  tarballFile: string;
+  packageJson: any;
 }
 
 
