@@ -1,7 +1,7 @@
 {
   "name": "serve-npm-tarballs",
   "version": "0.1.0",
-  "description": "A teensy wrapper around Verdaccio to serve NPM tarballs",
+  "description": "A teensy wrapper around Verdaccio to serve NPM tarballs for testing",
   "main": "index.js",
   "bin": {
     "serve-npm-tarballs": "serve-npm-tarballs.js"
@@ -9,8 +9,8 @@
   "scripts": {
     "build": "tsc"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["npm", "verdaccio"],
+  "author": "Rico Huijbers",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^13.11.1",
@@ -22,5 +22,13 @@
     "tar": "^6.0.1",
     "verdaccio": "^4.5.1",
     "yargs": "^15.3.1"
+  },
+  "repository": {
+    "url": "https://github.com/rix0rrr/serve-npm-tarballs.git",
+    "type": "git"
+  },
+  "homepage": "https://github.com/rix0rrr/serve-npm-tarballs",
+  "engines": {
+    "node": ">= 10.12.0"
   }
 }

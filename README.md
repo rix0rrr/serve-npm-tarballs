@@ -1,6 +1,6 @@
 # serve-npm-tarballs
 
-A teensy little utility to serve NPM tarballs right before they're published.
+A teensy little utility to serve NPM tarballs for testing purposes.
 
 If you want to integration tests your (set of) NPM tarballs, you might
 run into behaviors of `npm install` that are slightly different depending
