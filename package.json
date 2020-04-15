@@ -1,0 +1,24 @@
+{
+  "name": "serve-npm-tarballs",
+  "version": "0.1.0",
+  "description": "A teensy wrapper around Verdaccio to serve NPM tarballs",
+  "main": "index.js",
+  "bin": {
+    "serve-npm-tarballs": "serve-npm-tarballs.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^13.11.1",
+    "@types/yargs": "^15.0.4",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "verdaccio": "^4.5.1",
+    "yargs": "^15.3.1"
+  }
+}
