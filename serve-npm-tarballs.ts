@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import * as yargs from 'yargs';
 import * as childProcess from 'child_process';
 import * as os from 'os';
