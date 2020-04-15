@@ -1,6 +1,6 @@
 {
   "name": "serve-npm-tarballs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A teensy wrapper around Verdaccio to serve NPM tarballs for testing",
   "main": "index.js",
   "bin": {
@@ -9,7 +9,10 @@
   "scripts": {
     "build": "tsc"
   },
-  "keywords": ["npm", "verdaccio"],
+  "keywords": [
+    "npm",
+    "verdaccio"
+  ],
   "author": "Rico Huijbers",
   "license": "ISC",
   "devDependencies": {
