@@ -2,8 +2,10 @@
 import * as yargs from 'yargs';
 import * as childProcess from 'child_process';
 import * as os from 'os';
+import * as glob from 'glob';
 import * as path from 'path';
 import * as tar from 'tar';
+import * as util from 'util';
 import { promises as fs } from 'fs';
 
 const VERSION = require('./package.json').version;
@@ -26,7 +28,14 @@ async function main() {
       type: 'string',
       requiresArg: true,
       desc: 'Serve all *.tgz files from the given directory',
-      default: '.',
+      conflicts: ['glob'],
+    })
+    .option('glob', {
+      alias: 'g',
+      type: 'string',
+      requiresArg: true,
+      desc: 'Serve all tarballs matching the given glob',
+      conflicts: ['directory'],
     })
     .option('log', {
       alias: 'l',
@@ -141,15 +150,24 @@ async function main() {
     try {
       debug(`Working directory: ${tempDir}`);
 
-      const tarballs = (await fs.readdir(path.resolve(argv.directory), { encoding: 'utf-8' }))
-        .filter(f => f.endsWith('.tgz'))
-        .map(f => path.resolve(argv.directory, f));
+      let tarballFiles;
+      if (argv.glob) {
+        tarballFiles = (await util.promisify(glob)(argv.glob, {
+          absolute: true,
+          nodir: true,
+        }));
+      } else {
+        const dir = argv.directory ?? '.';
+        tarballFiles = (await fs.readdir(path.resolve(dir), { encoding: 'utf-8' }))
+          .filter(f => f.endsWith('.tgz'))
+          .map(f => path.resolve(dir, f));
+      }
 
-      const tarballInfos = new Array<TarballInfo>();
-      for (const tarball of tarballs) {
+      const tarballs = new Array<TarballInfo>();
+      for (const tarball of tarballFiles) {
         try {
           const pj = JSON.parse((await extractFileFromTarball(tarball, 'package/package.json')).toString());
-          tarballInfos.push({ tarballFile: tarball, packageJson: pj });
+          tarballs.push({ tarballFile: tarball, packageJson: pj });
         } catch (e) {
           debug(`Error reading ${tarball}'s package.json: ${e.message}`);
         }
@@ -158,7 +176,7 @@ async function main() {
       const packagesToHide: string[] = [...argv["hide-upstream"]];
       if (argv["hide-tarballs"]) {
         // We have to read the package name from every individual tarball
-        packagesToHide.push(...tarballInfos.map(t => t.packageJson.name));
+        packagesToHide.push(...tarballs.map(t => t.packageJson.name));
       }
 
       // Write a config file for NPM
@@ -198,12 +216,12 @@ async function main() {
         }
       };
 
-      if (tarballInfos.length > 0) {
-        debug(`Publishing ${tarballInfos.length} packages`);
+      if (tarballs.length > 0) {
+        debug(`Publishing ${tarballs.length} packages`);
         await runVerdaccio(makeVerdaccioConfig(tempDir, packagesWithoutUpstream), port, tempDir, async () => {
           // Publish all tarballs
           // This will MONGO eat up your CPU
-          await promiseAllConcurrent(tarballInfos.map(tarball => () => invokeSubprocess(['npm', '--loglevel', 'silent', 'publish', '--force', tarball.tarballFile], {
+          await promiseAllConcurrent(tarballs.map(tarball => () => invokeSubprocess(['npm', '--loglevel', 'silent', 'publish', '--force', tarball.tarballFile], {
             verbose: argv.verbose > 0,
             env: subprocessEnv,
           })));
