@@ -213,6 +213,7 @@ async function main() {
         '**': {
           access: '$all',
           publish: '$all',
+          // Notably: no 'proxy' entry here
         }
       };
 
@@ -227,9 +228,6 @@ async function main() {
           })));
         });
       }
-
-      //        99.83 real        87.17 user        25.64 sys
-
 
       debug(`Hiding ${packagesToHide}`);
       const finalPackageConfig: any = {};
