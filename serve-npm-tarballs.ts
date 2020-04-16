@@ -203,7 +203,7 @@ async function main() {
         await runVerdaccio(makeVerdaccioConfig(tempDir, packagesWithoutUpstream), port, tempDir, async () => {
           // Publish all tarballs
           // This will MONGO eat up your CPU
-          await Promise.all(tarballInfos.map(tarball => invokeSubprocess(['npm', '--loglevel', 'silent', 'publish', '--force', tarball.tarballFile], {
+          await promiseAllConcurrent(tarballInfos.map(tarball => () => invokeSubprocess(['npm', '--loglevel', 'silent', 'publish', '--force', tarball.tarballFile], {
             verbose: argv.verbose > 0,
             env: subprocessEnv,
           })));
@@ -329,6 +329,37 @@ async function extractFileFromTarball(tarball: string, filePath: string): Promis
 interface TarballInfo {
   tarballFile: string;
   packageJson: any;
+}
+
+function promiseAllConcurrent<A>(thunks: Array<() => Promise<A>>, n?: number): Promise<Array<A>> {
+  // Being more concurrent than this has by experimentation shown not to be too useful
+  n = n || Math.max(2, os.cpus().length / 2);
+  let initial = thunks.slice(0, n);
+  let resolved = new Array<Promise<A>>();
+  let next = initial.length;
+  return new Promise(ok => {
+    // Fire off the N initial promises from the list
+    initial.forEach(x => {
+      let res = x();
+      resolved.push(res);
+      res.then(y => {
+        runNext();
+        return y;
+      })
+    })
+
+    // For each completed one, start a new one if available
+    function runNext() {
+      if(next === thunks.length){
+        ok(Promise.all(resolved));
+      } else {
+        resolved.push(thunks[next++]().then(x => {
+          runNext();
+          return x;
+        }));
+      }
+    }
+  });
 }
 
 
