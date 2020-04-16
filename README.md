@@ -17,8 +17,8 @@ serve-npm-tarballs [options] [COMMAND [...]]
 
 Options:
   --verbose, -v        Increase logging verbosity           [count] [default: 0]
-  --directory, -d      Serve all *.tgz files from the given directory
-                                                         [string] [default: "."]
+  --directory, -d      Serve all *.tgz files from the given directory   [string]
+  --glob, -g           Serve all tarballs matching the given glob       [string]
   --log, -l            Write logs to the given file                     [string]
   --port, -p           Port number to serve on          [number] [default: 4873]
   --log-level, -L      Log level to log to file with  [string] [default: "info"]
@@ -28,6 +28,8 @@ Options:
                        upstream (hides all versions)                   [boolean]
   --daemon, -D         Run as a daemon. Output environment variables to interace
                        with the daemon on stdout, ready to be eval'ed  [boolean]
+  --help               Show help                                       [boolean]
+  --version            Show version number                             [boolean]
 ```
 
 The tool can be used in two ways:
