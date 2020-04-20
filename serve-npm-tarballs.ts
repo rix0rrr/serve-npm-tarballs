@@ -252,7 +252,11 @@ async function main() {
       console.error(e.message);
       process.exitCode = 1;
     } finally {
-      await fs.rmdir(tempDir, { recursive: true });
+      try {
+        await fs.rmdir(tempDir, { recursive: true });
+      } catch (e) {
+        console.error(`Warning: ${e.message}`);
+      }
     }
   }
 
