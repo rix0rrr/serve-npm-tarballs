@@ -7,7 +7,8 @@
     "serve-npm-tarballs": "serve-npm-tarballs.js"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "pub": "npm run build && npm version patch && npm publish && npm git push --tags"
   },
   "keywords": [
     "npm",
