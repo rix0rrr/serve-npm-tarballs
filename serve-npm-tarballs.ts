@@ -6,6 +6,7 @@ import * as glob from 'glob';
 import * as path from 'path';
 import * as tar from 'tar';
 import * as util from 'util';
+import * as rimraf from 'rimraf';
 import { promises as fs } from 'fs';
 
 const VERSION = require('./package.json').version;
@@ -253,7 +254,7 @@ async function main() {
       process.exitCode = 1;
     } finally {
       try {
-        await fs.rmdir(tempDir, { recursive: true });
+        await util.promisify(rimraf)(tempDir);
       } catch (e) {
         console.error(`Warning: ${e.message}`);
       }
