@@ -11,6 +11,32 @@ import { promises as fs } from 'fs';
 
 const VERSION = require('./package.json').version;
 
+// ----------------------------------------------------------
+// Hacks here
+//
+// Since we've removed the dependency on LevelDB via the shrinkwrap
+// file, make sure to invasively modify Verdaccio to also never instantiate
+// LevelDB.
+var Module = require('module');
+var originalRequire = Module.prototype.require;
+
+Module.prototype.require = function(moduleName: string){
+  // Make the include of 'level' not fail
+  if (moduleName === 'level') { return undefined; }
+
+  const originalMod = originalRequire.apply(this, arguments);
+
+  // Replace the function that uses LevelDB with a dummy that throws
+  if (moduleName.indexOf('local-storage') > -1) {
+    if (originalMod.LocalDatabase?.prototype.getTokenDb) {
+      (originalMod.LocalDatabase?.prototype as any).getTokenDb = () => {
+        throw new Error('*serve-npm-tarballs* I removed LevelDB from Verdaccio. Apparently we need this feature after all. Let me know!');
+      };
+    }
+  }
+  return originalMod;
+};
+
 // No types :(
 const { default: startVerdaccio } = require('verdaccio');
 

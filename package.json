@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "pub": "npm run build && npm version patch && npm publish && git push --tags"
+    "pub": "npm run build && node shrink-snip.js && npm version patch && npm publish && git push --tags"
   },
   "keywords": [
     "npm",

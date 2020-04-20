@@ -8,6 +8,14 @@ on whether you're installing from a registry or running `npm install <file>.tgz`
 
 This tool helps make testing the same as for your users.
 
+NOTE: This package has snipped some dependencies from deep in the tree: LevelDB
+(dependency of Verdaccio) and dtrace-provider (dependency of bunyan, dependency
+of Verdaccio). Removing these remove the requirement to compile a native module
+when this program is being run, which makes it easier to run
+`serve-npm-tarballs` on a Windows machine (and just quicker to run install it
+overall). This *seems* to be fine, but let me know if this breaks anything for
+you.
+
 ## Usage
 
 Basic usage:
