@@ -343,6 +343,7 @@ async function invokeSubprocess(command: string[], options: ShellOptions = {}): 
   }
   const child = childProcess.spawn(command[0], command.slice(1), {
     ...options,
+    shell: process.platform === 'win32',  // Need this to spawn .bat/.cmd files (which npm is)
     stdio: 'inherit',
   });
 
@@ -384,7 +385,7 @@ function promiseAllConcurrent<A>(thunks: Array<() => Promise<A>>, n?: number): P
   let initial = thunks.slice(0, n);
   let resolved = new Array<Promise<A>>();
   let next = initial.length;
-  return new Promise(ok => {
+  return new Promise((ok, ko) => {
     // Fire off the N initial promises from the list
     initial.forEach(x => {
       let res = x();
@@ -400,10 +401,12 @@ function promiseAllConcurrent<A>(thunks: Array<() => Promise<A>>, n?: number): P
       if(next === thunks.length){
         ok(Promise.all(resolved));
       } else {
-        resolved.push(thunks[next++]().then(x => {
+        const promise = thunks[next++]();
+        promise.then(x => {
           runNext();
           return x;
-        }));
+        }).catch(ko);
+        resolved.push(promise);
       }
     }
   });
