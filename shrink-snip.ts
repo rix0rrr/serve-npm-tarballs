@@ -20,7 +20,7 @@ do {
   removeObsoletePackages(shrinkwrap);
 } while(changes);
 
-fs.writeFileSync('npm-shrinkwrap.json', JSON.stringify(shrinkwrap, undefined, 2), { encoding: 'utf-8' });
+fs.writeFileSync('npm-shrinkwrap.json', JSON.stringify(shrinkwrap, undefined, 2) + '\n', { encoding: 'utf-8' });
 
 function removeObsoletePackages(scope: { dependencies?: Record<string, any>}) {
   if (!scope.dependencies) { return; }
