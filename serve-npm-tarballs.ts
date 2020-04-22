@@ -137,6 +137,10 @@ async function main() {
         debug('Shutting down.');
       });
     } else {
+      if (path.resolve(__filename).indexOf('_npx') > -1) {
+        throw new Error(`Cannot use --daemon when running using ephemeral 'npx' invocation. Install first.`);
+      }
+
       const daemonProc = childProcess.fork(path.resolve(__filename), process.argv.slice(2), {
         detached: true,
         // Must not 'ignore' child process output otherwise the daemon process

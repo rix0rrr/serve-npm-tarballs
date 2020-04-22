@@ -75,6 +75,10 @@ The environment variables will configure NPM to hit the mock registry.
 
 Don't forget to kill the server before your script exits.
 
+NOTE: When using `--daemon` mode, you cannot run using `npx` without
+installing first, or `npx` will delete the scripts when the front-end
+process exits (and the daemon is still running).
+
 # Packages and hiding
 
 ## Packages served
