@@ -139,8 +139,10 @@ async function main() {
     } else {
       const daemonProc = childProcess.fork(path.resolve(__filename), process.argv.slice(2), {
         detached: true,
-        // Must be inherit otherwise the daemon process is going to crap out after a while
-        stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
+        // Must not 'ignore' child process output otherwise the daemon process
+        // is going to crap out after a while Child process stdout goes to
+        // stderr, because we want to be able to close stdout.
+        stdio: ['ignore', 2, 2, 'ipc'],
       });
 
       // Wait for the first message, print that to stdout, then exit
