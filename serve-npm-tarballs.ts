@@ -303,7 +303,7 @@ async function main() {
           cache: false
         }
       },
-      max_body_size: '100mb',
+      max_body_size: '500mb',
       publish: {
         allow_offline: true
       },
