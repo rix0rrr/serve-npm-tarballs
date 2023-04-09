@@ -20,7 +20,7 @@ const VERSION = require('./package.json').version;
 var Module = require('module');
 var originalRequire = Module.prototype.require;
 
-Module.prototype.require = function(moduleName: string){
+Module.prototype.require = function (moduleName: string) {
   // Make the include of 'level' not fail
   if (moduleName === 'level') { return undefined; }
 
@@ -103,6 +103,7 @@ async function main() {
       type: 'boolean',
       desc: 'Run as a daemon. Output environment variables to interace with the daemon on stdout, ready to be eval\'ed',
     })
+    .env('SERVE_NPM_TARBALLS_')
     .help()
     .strict()
     .version()
@@ -166,7 +167,7 @@ async function main() {
 
       await invokeSubprocess(argv._, {
         verbose: argv.verbose > 0,
-        env: {...process.env, ...npmConfigEnv},
+        env: { ...process.env, ...npmConfigEnv },
       });
 
       debug('Subprocess finished');
@@ -256,7 +257,7 @@ async function main() {
         await runVerdaccio(makeVerdaccioConfig(tempDir, packagesWithoutUpstream), port, tempDir, async () => {
           // Publish all tarballs
           // This will MONGO eat up your CPU
-          await promiseAllConcurrent(tarballs.map(tarball => () => invokeSubprocess(['npm', '--loglevel', 'silent', 'publish', '--force', tarball.tarballFile], {
+          await promiseAllConcurrent(tarballs.map(tarball => () => invokeSubprocess(['npm', '--loglevel', argv.verbose > 0 ? 'verbose' : 'silent', 'publish', '--force', tarball.tarballFile], {
             verbose: argv.verbose > 0,
             env: subprocessEnv,
           })));
@@ -279,10 +280,10 @@ async function main() {
       };
 
       // Second run -- do the real work (whatever it is)
-      await runVerdaccio(makeVerdaccioConfig(tempDir, finalPackageConfig), port, tempDir, async() => {
+      await runVerdaccio(makeVerdaccioConfig(tempDir, finalPackageConfig), port, tempDir, async () => {
         await action(npmConfigVars);
       });
-    } catch(e) {
+    } catch (e) {
       console.error(e.message);
       process.exitCode = 1;
     } finally {
@@ -405,7 +406,7 @@ function promiseAllConcurrent<A>(thunks: Array<() => Promise<A>>, n?: number): P
 
     // For each completed one, start a new one if available
     function runNext() {
-      if(next === thunks.length){
+      if (next === thunks.length) {
         ok(Promise.all(resolved));
       } else {
         const promise = thunks[next++]();
