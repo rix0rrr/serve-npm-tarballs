@@ -164,7 +164,7 @@ async function main() {
       // completely gets to decide what to do with Ctrl-C.
       process.on('SIGINT', () => undefined);
 
-      await invokeSubprocess(argv._, {
+      await invokeSubprocess(argv._.map(x => String(x)), {
         verbose: argv.verbose > 0,
         env: {...process.env, ...npmConfigEnv},
       });
