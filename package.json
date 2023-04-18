@@ -1,6 +1,6 @@
 {
   "name": "serve-npm-tarballs",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "A teensy wrapper around Verdaccio to serve NPM tarballs for testing",
   "main": "index.js",
   "bin": {
