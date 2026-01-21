@@ -27,7 +27,7 @@
   "dependencies": {
     "glob": "^7.1.6",
     "rimraf": "^3.0.2",
-    "tar": "^6.0.1",
+    "tar": "^7.5.4",
     "verdaccio": "^4.5.1",
     "yargs": "^15.3.1"
   },
